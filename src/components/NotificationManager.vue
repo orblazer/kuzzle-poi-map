@@ -13,45 +13,30 @@
 </template>
 
 <script lang="ts">
+import { KNotification } from "@/types";
 import Vue from "vue";
 
 const timeout = 10000;
 
-interface Notification {
-  id: number;
-  type: "error" | "success";
-  message: string;
-  timeout: number;
-}
-
-interface Data {
-  notifications: Notification[];
-}
-interface Methods {
-  notify(type: Notification["type"], message: string): void;
-  dismiss(id: number): void;
-}
-
-export default Vue.extend<Data, Methods, object>({
+export default Vue.extend({
   name: "NotificationManager",
   data() {
     return {
-      notifications: [],
+      notifications: [] as KNotification[],
     };
   },
   methods: {
-    notify(type, message) {
+    notify(type: KNotification["type"], message: string) {
       const id = this.notifications.length + 1;
-      const notification: Notification = {
+      this.notifications.push({
         id,
         type,
         message,
         timeout: setTimeout(() => this.dismiss(id), timeout),
-      };
-      this.notifications = [notification, ...this.notifications];
+      });
     },
 
-    dismiss(id) {
+    dismiss(id: number) {
       this.notifications = this.notifications.filter(
         (notification) => notification.id !== id
       );

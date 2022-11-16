@@ -31,23 +31,6 @@ import POIForm from "./components/POIForm.vue";
 import kuzzle from "./services/kuzzle";
 import { KMarker, KMarkerDocument } from "./types";
 
-interface Data {
-  loading: boolean;
-  kuzzle: {
-    roomID: string;
-    index: string;
-    collection: string;
-  };
-  leaflet: {
-    zoom: number;
-    center: LatLngTuple;
-  };
-  poiForm: {
-    open: boolean;
-    position: LatLngTuple;
-  };
-}
-
 export default Vue.extend({
   name: "App",
   components: {
@@ -56,7 +39,7 @@ export default Vue.extend({
     POIForm,
     NotificationManager,
   },
-  data(): Data {
+  data() {
     return {
       loading: true, // Data from Kuzzle is loaded or not
       kuzzle: {

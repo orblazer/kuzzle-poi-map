@@ -28,12 +28,6 @@ import type { LatLngTuple } from "leaflet";
 import Vue from "vue";
 import { LCircleMarker, LMap, LTileLayer, LTooltip } from "vue2-leaflet";
 
-interface Data {
-  url: string;
-  attribution: string;
-  markers: KMarker[];
-}
-
 export default Vue.extend({
   name: "KMap",
   components: {
@@ -56,12 +50,12 @@ export default Vue.extend({
       default: 6,
     },
   },
-  data(): Data {
+  data() {
     return {
       url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", // Url for tile layer
       attribution:
         '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', // Attribution of tile
-      markers: [],
+      markers: [] as KMarker[],
     };
   },
   methods: {
