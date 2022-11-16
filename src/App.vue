@@ -36,6 +36,7 @@
         @submit="addMarker"
       ></POIForm>
     </div>
+    <NotificationManager ref="notifier"></NotificationManager>
   </div>
 </template>
 
@@ -48,6 +49,7 @@ import {
 import type { LatLngTuple, LeafletMouseEvent } from "leaflet";
 import Vue from "vue";
 import { LCircleMarker, LMap, LTileLayer, LTooltip } from "vue2-leaflet";
+import NotificationManager from "./components/NotificationManager.vue";
 import POIForm from "./components/POIForm.vue";
 import kuzzle from "./services/kuzzle";
 
@@ -88,6 +90,7 @@ export default Vue.extend({
     LCircleMarker,
     LTooltip,
     POIForm,
+    NotificationManager,
   },
   data(): Data {
     return {
@@ -112,25 +115,24 @@ export default Vue.extend({
       },
     };
   },
+  computed: {
+    notifier() {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return this.$refs.notifier as any; // TODO: use "InstanceType<typeof NotificationManager>"
+    },
+  },
   async mounted() {
-    // Etablish the connection
-    await kuzzle.connect();
+    // Establish the connection
+    try {
+      await kuzzle.connect();
+    } catch (_) {
+      this.notifier.notify("error", "Could not connect to Kuzzle !");
+      kuzzle.addOnceListener("connected", () => this.loadData());
 
-    // Check if index exists
-    if (!(await kuzzle.index.exists(this.kuzzle.index))) {
-      // If not, create index and collection
-      await kuzzle.index.create(this.kuzzle.index);
-      await kuzzle.collection.create(
-        this.kuzzle.index,
-        this.kuzzle.collection,
-        {}
-      );
+      return;
     }
 
-    await this.fetchMarkers();
-    await this.subscribeMarkers();
-
-    this.loading = true;
+    await this.loadData();
   },
   async beforeDestroy() {
     await kuzzle.realtime.unsubscribe(this.kuzzle.roomID);
@@ -143,49 +145,102 @@ export default Vue.extend({
         position: [event.latlng.lat, event.latlng.lng],
       };
     },
-    handleMarkerClick(marker: POI) {
+    async handleMarkerClick(marker: POI) {
       switch (marker.state) {
         // Update marker state to 'visited'
         case "new":
-          kuzzle.document.update<KMarker>(
-            this.kuzzle.index,
-            this.kuzzle.collection,
-            marker._id,
-            {
-              state: "visited",
-            }
-          );
+          await kuzzle.document
+            .update<KMarker>(
+              this.kuzzle.index,
+              this.kuzzle.collection,
+              marker._id,
+              {
+                state: "visited",
+              }
+            )
+            .then(() =>
+              this.notifier.notify("success", `POI '${marker.name}' visited !`)
+            )
+            .catch(() =>
+              this.notifier.notify(
+                "error",
+                `Could not visit POI '${marker.name}' !`
+              )
+            );
           break;
 
         // Remove 'visited' marker
         case "visited":
-          kuzzle.document.delete(
-            this.kuzzle.index,
-            this.kuzzle.collection,
-            marker._id
-          );
+          await kuzzle.document
+            .delete(this.kuzzle.index, this.kuzzle.collection, marker._id)
+            .then(() =>
+              this.notifier.notify("success", `POI '${marker.name}' deleted !`)
+            )
+            .catch(() =>
+              this.notifier.notify(
+                "error",
+                `Could not delete POI '${marker.name}' !`
+              )
+            );
           break;
       }
     },
 
     async addMarker(data: { position: LatLngTuple; name: string }) {
       // Call the create method of the document controller
-      await kuzzle.document.create<KMarker>(
-        this.kuzzle.index,
-        this.kuzzle.collection,
-        // Pass the document to be stored in Kuzzle as a parameter
-        {
-          name: data.name,
-          position: data.position,
-          state: "new",
-        }
-      );
+      try {
+        await kuzzle.document.create<KMarker>(
+          this.kuzzle.index,
+          this.kuzzle.collection,
+          // Pass the document to be stored in Kuzzle as a parameter
+          {
+            name: data.name,
+            position: data.position,
+            state: "new",
+          }
+        );
+      } catch (_) {
+        this.notifier.notify("error", `Could not create POI '${data.name}' !`);
+        return;
+      }
 
       // Close form
       this.poiForm = {
         open: false,
         position: [0, 0],
       };
+
+      this.notifier.notify("success", `POI '${data.name}' created !`);
+    },
+
+    async loadData() {
+      // Bind kuzzle connections status
+      kuzzle.addListener("disconnected", () =>
+        this.notifier.notify("error", "Connection lost to Kuzzle !")
+      );
+      kuzzle.addListener("connected", () =>
+        this.notifier.notify("success", "Connected to Kuzzle !")
+      );
+
+      // Check if index exists
+      if (!(await kuzzle.index.exists(this.kuzzle.index))) {
+        // If not, create index and collection
+        await kuzzle.index.create(this.kuzzle.index);
+        await kuzzle.collection.create(
+          this.kuzzle.index,
+          this.kuzzle.collection,
+          {}
+        );
+      }
+
+      await this.fetchMarkers().catch(() =>
+        this.notifier.notify("error", "Could not fetch POIs !")
+      );
+      await this.subscribeMarkers().catch(() =>
+        this.notifier.notify("error", "Could not subscribe to POIs !")
+      );
+
+      this.loading = false;
     },
 
     /**

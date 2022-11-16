@@ -18,6 +18,12 @@ body,
   --field-border: #9ca3af;
   --field-error: #ef4444;
 
+  --notification-error-background: #ef4444;
+  --notification-error-text: var(--text-color);
+
+  --notification-success-background: #16a34a;
+  --notification-success-text: var(--text-color-primary-bg);
+
   --marker-new: yellow;
   --marker-visited: lime;
 
