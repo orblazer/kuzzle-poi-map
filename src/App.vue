@@ -16,7 +16,9 @@
         :key="marker._id"
         :latLng="marker.position"
         :radius="leaflet.poiSize"
-        :color="`var(--marker-${marker.state})`"
+        :color="`var(--marker-stroke)`"
+        :weight="0.3"
+        :fillOpacity="1"
         :fillColor="`var(--marker-${marker.state})`"
         :bubblingMouseEvents="false"
         @click="handleMarkerClick(marker)"
@@ -106,7 +108,7 @@ export default Vue.extend({
         url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", // Url for tile layer
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', // Attribution of tile
-        poiSize: 5,
+        poiSize: 6,
       },
       markers: [],
       poiForm: {

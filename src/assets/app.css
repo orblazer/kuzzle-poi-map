@@ -24,8 +24,9 @@ body,
   --notification-success-background: #16a34a;
   --notification-success-text: var(--text-color-primary-bg);
 
-  --marker-new: yellow;
-  --marker-visited: lime;
+  --marker-stroke: #111827;
+  --marker-new: #fdf147;
+  --marker-visited: #22c55e;
 
   font-family: "Avenir", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -33,11 +34,6 @@ body,
   background-color: var(--primary);
   color: var(--text-color);
   position: relative;
-}
-
-.poi-tooltip h2 {
-  font-size: 1.2em;
-  margin: 0;
 }
 
 .modal-wrapper {
@@ -48,6 +44,11 @@ body,
   inset: 0;
   background-color: rgba(0, 0, 0, 0.3);
   z-index: 1000;
+}
+
+.poi-tooltip h2 {
+  font-size: 1.2em;
+  margin: 0;
 }
 
 /**
