@@ -7,16 +7,16 @@
       @mapClick="handleMapClick"
       @markerClick="handleMarkerClick"
     />
-    <div v-if="loading" class="loader"></div>
+    <fullscreen-loader v-if="loading" />
 
     <div v-if="poiForm.open" class="modal-wrapper">
       <POIForm
         :position="poiForm.position"
         @close="poiForm.open = false"
         @submit="addMarker"
-      ></POIForm>
+      />
     </div>
-    <NotificationManager ref="notifier"></NotificationManager>
+    <NotificationManager ref="notifier" />
   </div>
 </template>
 
@@ -24,6 +24,7 @@
 import { DocumentNotification, KDocument } from "kuzzle-sdk";
 import type { LatLngTuple, LeafletMouseEvent } from "leaflet";
 import Vue from "vue";
+import FullscreenLoader from "./components/FullscreenLoader.vue";
 import KMap from "./components/Map.vue";
 import NotificationManager from "./components/NotificationManager.vue";
 import POIForm from "./components/POIForm.vue";
@@ -51,6 +52,7 @@ export default Vue.extend({
   name: "App",
   components: {
     KMap,
+    FullscreenLoader,
     POIForm,
     NotificationManager,
   },
