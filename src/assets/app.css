@@ -1,0 +1,75 @@
+body {
+  margin: 0;
+}
+
+body,
+#app {
+  height: 100vh;
+}
+
+#app {
+  --text-color: #111827;
+  --primary: #002835;
+  --primary-hover: #1f424e;
+  --text-color-primary-bg: #f9fafb;
+
+  --modal-background: #f3f4f6;
+
+  --field-border: #9ca3af;
+  --field-error: #ef4444;
+
+  --marker-new: yellow;
+  --marker-visited: lime;
+
+  font-family: "Avenir", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--primary);
+  color: var(--text-color);
+  position: relative;
+}
+
+.poi-tooltip h2 {
+  font-size: 1.2em;
+  margin: 0;
+}
+
+.modal-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+}
+
+/**
+ * Loader
+ */
+.loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+.loader:after {
+  --color: var(--primary-hover);
+  content: " ";
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 8px;
+  border-radius: 50%;
+  border: 6px solid var(--color);
+  border-color: var(--color) transparent var(--color) transparent;
+  animation: loader 1s linear infinite;
+}
+@keyframes loader {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
