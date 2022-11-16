@@ -1,7 +1,7 @@
 <template>
   <div id="app">
     <l-map
-      v-if="loading"
+      v-if="!loading"
       :zoom="leaflet.zoom"
       :center="leaflet.center"
       @click="handleMapClick"
@@ -115,6 +115,7 @@ export default Vue.extend({
   async mounted() {
     // Etablish the connection
     await kuzzle.connect();
+
     // Check if index exists
     if (!(await kuzzle.index.exists(this.kuzzle.index))) {
       // If not, create index and collection
@@ -125,6 +126,7 @@ export default Vue.extend({
         {}
       );
     }
+
     await this.fetchMarkers();
     await this.subscribeMarkers();
 
