@@ -84,7 +84,7 @@ export default Vue.extend<Data, Methods, Computed, Props>({
 <style>
 .modal {
   position: relative;
-  background-color: #f3f4f6;
+  background-color: var(--modal-background);
   padding: 1rem;
   border-radius: 2px;
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
@@ -104,7 +104,10 @@ export default Vue.extend<Data, Methods, Computed, Props>({
   font-size: 2rem;
 }
 .modal-close:hover {
-  color: #4b5563;
+  color: var(--primary);
+}
+.modal-close:active {
+  color: var(--primary-hover);
 }
 
 .modal-title {
@@ -121,7 +124,7 @@ export default Vue.extend<Data, Methods, Computed, Props>({
   gap: 1rem;
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #9ca3af;
+  border-top: 1px solid var(--field-border);
 }
 
 .modal-field {
@@ -133,27 +136,28 @@ export default Vue.extend<Data, Methods, Computed, Props>({
   padding: 0;
 }
 .modal-field input {
-  background-color: #f9fafb;
-  border: 1px solid #9ca3af;
+  color: currentColor;
+  background-color: transparent;
+  border: 1px solid var(--field-border);
   border-radius: 2px;
   padding: 0.5em 1em;
   min-width: 50%;
 }
 .modal-field--error input {
-  border-color: #ef4444;
+  border-color: var(--field-error);
 }
 
 .modal-submit {
   justify-self: end;
   align-self: flex-end;
-  background-color: #002835;
+  background-color: var(--primary);
   border-radius: 2px;
   border: none;
-  color: #f9fafb;
+  color: var(--text-color-primary-bg);
   padding: 0.5em 1em;
   cursor: pointer;
 }
 .modal-submit:hover {
-  background-color: #1f424e;
+  background-color: var(--primary-hover);
 }
 </style>

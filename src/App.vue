@@ -1,6 +1,7 @@
 <template>
   <div id="app">
     <l-map
+      v-if="loading"
       :zoom="leaflet.zoom"
       :center="leaflet.center"
       @click="handleMapClick"
@@ -18,7 +19,7 @@
         :color="`var(--marker-${marker.state})`"
         :fillColor="`var(--marker-${marker.state})`"
         :bubblingMouseEvents="false"
-        @click="handleMarkerClick(marker._id)"
+        @click="handleMarkerClick(marker)"
       >
         <l-tooltip class="poi-tooltip">
           <h2>POI: {{ marker.name }}</h2>
@@ -26,6 +27,7 @@
         </l-tooltip>
       </l-circle-marker>
     </l-map>
+    <div v-else class="loader"></div>
 
     <div v-if="poiForm.open" class="modal-wrapper">
       <POIForm
@@ -38,10 +40,16 @@
 </template>
 
 <script lang="ts">
+import {
+  DocumentNotification,
+  KDocument,
+  KDocumentContentGeneric,
+} from "kuzzle-sdk";
 import type { LatLngTuple, LeafletMouseEvent } from "leaflet";
 import Vue from "vue";
 import { LCircleMarker, LMap, LTileLayer, LTooltip } from "vue2-leaflet";
 import POIForm from "./components/POIForm.vue";
+import kuzzle from "./services/kuzzle";
 
 interface POI {
   _id: string;
@@ -50,6 +58,12 @@ interface POI {
   state: "new" | "visited";
 }
 interface Data {
+  loading: boolean;
+  kuzzle: {
+    roomID: string;
+    index: string;
+    collection: string;
+  };
   leaflet: {
     zoom: number;
     center: LatLngTuple;
@@ -64,6 +78,8 @@ interface Data {
   };
 }
 
+type KMarker = KDocumentContentGeneric & POI;
+
 export default Vue.extend({
   name: "App",
   components: {
@@ -75,6 +91,12 @@ export default Vue.extend({
   },
   data(): Data {
     return {
+      loading: true, // Data from Kuzzle is loaded or not
+      kuzzle: {
+        roomID: "", // Id of the realtime subscription
+        index: "poi", // Name of POI index
+        collection: "markers", // Name of collection hold POI markers
+      },
       leaflet: {
         zoom: 6,
         center: [46.449, 2.21], // Center map to the France country
@@ -90,6 +112,27 @@ export default Vue.extend({
       },
     };
   },
+  async mounted() {
+    // Etablish the connection
+    await kuzzle.connect();
+    // Check if index exists
+    if (!(await kuzzle.index.exists(this.kuzzle.index))) {
+      // If not, create index and collection
+      await kuzzle.index.create(this.kuzzle.index);
+      await kuzzle.collection.create(
+        this.kuzzle.index,
+        this.kuzzle.collection,
+        {}
+      );
+    }
+    await this.fetchMarkers();
+    await this.subscribeMarkers();
+
+    this.loading = true;
+  },
+  async beforeDestroy() {
+    await kuzzle.realtime.unsubscribe(this.kuzzle.roomID);
+  },
   methods: {
     handleMapClick(event: LeafletMouseEvent) {
       // Open POI form
@@ -98,41 +141,116 @@ export default Vue.extend({
         position: [event.latlng.lat, event.latlng.lng],
       };
     },
-    handleMarkerClick(id: string) {
-      this.markers = this.markers.reduce<POI[]>((acc, poi) => {
-        if (poi._id === id) {
-          switch (poi.state) {
-            // Change state if is new marker
-            case "new":
-              poi.state = "visited";
-              break;
+    handleMarkerClick(marker: POI) {
+      switch (marker.state) {
+        // Update marker state to 'visited'
+        case "new":
+          kuzzle.document.update<KMarker>(
+            this.kuzzle.index,
+            this.kuzzle.collection,
+            marker._id,
+            {
+              state: "visited",
+            }
+          );
+          break;
 
-            // Delete if is visited
-            case "visited":
-              return acc;
-          }
-        }
-
-        acc.push(poi);
-        return acc;
-      }, []);
+        // Remove 'visited' marker
+        case "visited":
+          kuzzle.document.delete(
+            this.kuzzle.index,
+            this.kuzzle.collection,
+            marker._id
+          );
+          break;
+      }
     },
 
-    addMarker(data: { position: LatLngTuple; name: string }) {
-      // Add new POP
-      const newMarker: POI = {
-        _id: Math.random().toString(16),
-        name: data.name,
-        position: data.position,
-        state: "new",
-      };
-      this.markers = [...this.markers, newMarker];
+    async addMarker(data: { position: LatLngTuple; name: string }) {
+      // Call the create method of the document controller
+      await kuzzle.document.create<KMarker>(
+        this.kuzzle.index,
+        this.kuzzle.collection,
+        // Pass the document to be stored in Kuzzle as a parameter
+        {
+          name: data.name,
+          position: data.position,
+          state: "new",
+        }
+      );
 
       // Close form
       this.poiForm = {
         open: false,
         position: [0, 0],
       };
+    },
+
+    /**
+     * Convert kuzzle document to POI object
+     * @param document The Kuzzle document
+     */
+    getMarker(document: KDocument<KMarker>): POI {
+      return {
+        _id: document._id,
+        name: document._source.name,
+        position: document._source.position,
+        state: document._source.state,
+      };
+    },
+    async fetchMarkers() {
+      // Call the search method of the document controller
+      const results = await kuzzle.document.search<KMarker>(
+        this.kuzzle.index,
+        this.kuzzle.collection,
+        { sort: ["_kuzzle_info.createdAt"] }, // Query => Sort the messages by creation date
+        { size: 100 } // Options => get a maximum of 100 messages
+      );
+
+      // Add each message to our array
+      results.hits.map((hit) => {
+        this.markers = [this.getMarker(hit), ...this.markers];
+      });
+    },
+    async subscribeMarkers() {
+      // Call the subscribe method of the realtime controller and receive the roomId
+      // Save the id of our subscription (we could need it to unsubscribe)
+      this.kuzzle.roomID = await kuzzle.realtime.subscribe(
+        this.kuzzle.index,
+        this.kuzzle.collection,
+        {}, // Filter
+        // Callback to receive notifications
+        (notification) => {
+          // Check if the notification interest us
+          if (notification.type !== "document") return;
+          const document = (notification as DocumentNotification)
+            .result as KDocument<KMarker>;
+
+          switch ((notification as DocumentNotification).action) {
+            // Add the new marker to our array
+            case "create":
+              this.markers = [this.getMarker(document), ...this.markers];
+              break;
+
+            // Update marker in our array
+            case "update":
+              this.markers = this.markers.map((marker) => {
+                if (marker._id === document._id) {
+                  return this.getMarker(document);
+                }
+                return marker;
+              });
+              break;
+
+            // Remove marker from or array
+            case "delete":
+              this.markers = this.markers.filter(
+                (marker) => marker._id !== document._id
+              );
+              break;
+          }
+        }
+      );
     },
   },
 });
@@ -149,13 +267,24 @@ body,
 }
 
 #app {
+  --text-color: #111827;
+  --primary: #002835;
+  --primary-hover: #1f424e;
+  --text-color-primary-bg: #f9fafb;
+
+  --modal-background: #f3f4f6;
+
+  --field-border: #9ca3af;
+  --field-error: #ef4444;
+
   --marker-new: yellow;
   --marker-visited: lime;
 
   font-family: "Avenir", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: #111827;
+  background-color: var(--primary);
+  color: var(--text-color);
   position: relative;
 }
 
@@ -172,5 +301,35 @@ body,
   inset: 0;
   background-color: rgba(0, 0, 0, 0.3);
   z-index: 1000;
+}
+
+/**
+ * Loader
+ */
+.loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+.loader:after {
+  --color: var(--primary-hover);
+  content: " ";
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 8px;
+  border-radius: 50%;
+  border: 6px solid var(--color);
+  border-color: var(--color) transparent var(--color) transparent;
+  animation: loader 1s linear infinite;
+}
+@keyframes loader {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>
