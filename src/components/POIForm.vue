@@ -5,11 +5,24 @@
     <h2 class="modal-title">Create new POI</h2>
     <strong>Position of POI :</strong>
     <ul>
-      <li><strong>Latitude</strong>: {{ position[0] }}</li>
-      <li><strong>Longitude</strong>: {{ position[1] }}</li>
+      <li><strong>Latitude</strong>: {{ position[0].toFixed(5) }}</li>
+      <li><strong>Longitude</strong>: {{ position[1].toFixed(5) }}</li>
     </ul>
 
-    <div v-if="position[0] <= -60 || position[0] >= 60" class="ea ea-frozen">
+    <div
+      v-if="
+        position[0].toFixed(5) == '71.16941' &&
+        position[1].toFixed(5) == '25.78331'
+      "
+      class="ea ea-north"
+    >
+      <strong>WOW ! Nice spot !</strong><br />
+      This is the northernmost road in europe!
+    </div>
+    <div
+      v-else-if="position[0] <= -60 || position[0] >= 60"
+      class="ea ea-frozen"
+    >
       WOOSH ! It's freezing here !
     </div>
     <div
@@ -22,9 +35,6 @@
       class="ea ea-hot"
     >
       WOOSH ! It's hot here !
-    </div>
-    <div v-else-if="position[0] == 0 || position[1] == 0" class="ea ea-zero">
-      WOW ! Nice spot !
     </div>
 
     <form class="modal-form">
@@ -195,7 +205,7 @@ export default Vue.extend<Data, Methods, Computed, Props>({
   border-color: #f59e0b;
   color: #b45309;
 }
-.ea-zero {
+.ea-north {
   background-color: rgba(244, 63, 94, 0.3);
   border-color: #f43f5e;
   color: #be123c;
