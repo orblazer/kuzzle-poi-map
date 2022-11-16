@@ -9,6 +9,24 @@
       <li><strong>Longitude</strong>: {{ position[1] }}</li>
     </ul>
 
+    <div v-if="position[0] <= -60 || position[0] >= 60" class="ea ea-frozen">
+      WOOSH ! It's freezing here !
+    </div>
+    <div
+      v-else-if="
+        position[0] >= 11 &&
+        position[0] <= 30 &&
+        position[1] >= -16 &&
+        position[1] <= 40
+      "
+      class="ea ea-hot"
+    >
+      WOOSH ! It's hot here !
+    </div>
+    <div v-else-if="position[0] == 0 || position[1] == 0" class="ea ea-zero">
+      WOW ! Nice spot !
+    </div>
+
     <form class="modal-form">
       <fieldset :class="nameFieldClass">
         <label for="name">Name</label>
@@ -159,5 +177,27 @@ export default Vue.extend<Data, Methods, Computed, Props>({
 }
 .modal-submit:hover {
   background-color: var(--primary-hover);
+}
+
+.ea {
+  border: 2px solid;
+  border-radius: 2px;
+  padding: 0.5rem;
+  margin-top: 1rem;
+}
+.ea-frozen {
+  background-color: rgba(8, 145, 178, 0.3);
+  border-color: #06b6d4;
+  color: #0e7490;
+}
+.ea-hot {
+  background-color: rgba(245, 158, 11, 0.3);
+  border-color: #f59e0b;
+  color: #b45309;
+}
+.ea-zero {
+  background-color: rgba(244, 63, 94, 0.3);
+  border-color: #f43f5e;
+  color: #be123c;
 }
 </style>
