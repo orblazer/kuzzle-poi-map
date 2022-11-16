@@ -1,35 +1,13 @@
 <template>
   <div id="app">
-    <l-map
-      v-if="!loading"
+    <k-map
+      ref="map"
       :zoom="leaflet.zoom"
       :center="leaflet.center"
-      @click="handleMapClick"
-    >
-      <l-tile-layer
-        :url="leaflet.url"
-        :attribution="leaflet.attribution"
-      ></l-tile-layer>
-
-      <l-circle-marker
-        v-for="marker in markers"
-        :key="marker._id"
-        :latLng="marker.position"
-        :radius="leaflet.poiSize"
-        :color="`var(--marker-stroke)`"
-        :weight="0.3"
-        :fillOpacity="1"
-        :fillColor="`var(--marker-${marker.state})`"
-        :bubblingMouseEvents="false"
-        @click="handleMarkerClick(marker)"
-      >
-        <l-tooltip class="poi-tooltip">
-          <h2>POI: {{ marker.name }}</h2>
-          <strong>State</strong>: {{ marker.state }}
-        </l-tooltip>
-      </l-circle-marker>
-    </l-map>
-    <div v-else class="loader"></div>
+      @mapClick="handleMapClick"
+      @markerClick="handleMarkerClick"
+    />
+    <div v-if="loading" class="loader"></div>
 
     <div v-if="poiForm.open" class="modal-wrapper">
       <POIForm
@@ -43,24 +21,15 @@
 </template>
 
 <script lang="ts">
-import {
-  DocumentNotification,
-  KDocument,
-  KDocumentContentGeneric,
-} from "kuzzle-sdk";
+import { DocumentNotification, KDocument } from "kuzzle-sdk";
 import type { LatLngTuple, LeafletMouseEvent } from "leaflet";
 import Vue from "vue";
-import { LCircleMarker, LMap, LTileLayer, LTooltip } from "vue2-leaflet";
+import KMap from "./components/Map.vue";
 import NotificationManager from "./components/NotificationManager.vue";
 import POIForm from "./components/POIForm.vue";
 import kuzzle from "./services/kuzzle";
+import { KMarker, KMarkerDocument } from "./types";
 
-interface POI {
-  _id: string;
-  name: string;
-  position: LatLngTuple;
-  state: "new" | "visited";
-}
 interface Data {
   loading: boolean;
   kuzzle: {
@@ -71,26 +40,17 @@ interface Data {
   leaflet: {
     zoom: number;
     center: LatLngTuple;
-    url: string;
-    attribution: string;
-    poiSize: number;
   };
-  markers: POI[];
   poiForm: {
     open: boolean;
     position: LatLngTuple;
   };
 }
 
-type KMarker = KDocumentContentGeneric & POI;
-
 export default Vue.extend({
   name: "App",
   components: {
-    LMap,
-    LTileLayer,
-    LCircleMarker,
-    LTooltip,
+    KMap,
     POIForm,
     NotificationManager,
   },
@@ -105,12 +65,7 @@ export default Vue.extend({
       leaflet: {
         zoom: 6,
         center: [46.449, 2.21], // Center map to the France country
-        url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", // Url for tile layer
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', // Attribution of tile
-        poiSize: 6,
       },
-      markers: [],
       poiForm: {
         open: false,
         position: [0, 0],
@@ -118,6 +73,10 @@ export default Vue.extend({
     };
   },
   computed: {
+    map() {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return this.$refs.map as any; // TODO: use "InstanceType<typeof KMap>"
+    },
     notifier() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       return this.$refs.notifier as any; // TODO: use "InstanceType<typeof NotificationManager>"
@@ -140,6 +99,10 @@ export default Vue.extend({
     await kuzzle.realtime.unsubscribe(this.kuzzle.roomID);
   },
   methods: {
+    /**
+     * Handle click on map
+     * @param event Leaflet mouse event
+     */
     handleMapClick(event: LeafletMouseEvent) {
       // Open POI form
       this.poiForm = {
@@ -147,12 +110,16 @@ export default Vue.extend({
         position: [event.latlng.lat, event.latlng.lng],
       };
     },
-    async handleMarkerClick(marker: POI) {
+    /**
+     * Handle click on marker
+     * @param marker Clicked marker
+     */
+    async handleMarkerClick(marker: KMarker) {
       switch (marker.state) {
         // Update marker state to 'visited'
         case "new":
           await kuzzle.document
-            .update<KMarker>(
+            .update<KMarkerDocument>(
               this.kuzzle.index,
               this.kuzzle.collection,
               marker._id,
@@ -188,6 +155,9 @@ export default Vue.extend({
       }
     },
 
+    /**
+     * Add new marker to the map
+     */
     async addMarker(data: { position: LatLngTuple; name: string }) {
       // Call the create method of the document controller
       try {
@@ -215,6 +185,9 @@ export default Vue.extend({
       this.notifier.notify("success", `POI '${data.name}' created !`);
     },
 
+    /**
+     * Load data from kuzzle
+     */
     async loadData() {
       // Bind kuzzle connections status
       kuzzle.addListener("disconnected", () =>
@@ -246,10 +219,10 @@ export default Vue.extend({
     },
 
     /**
-     * Convert kuzzle document to POI object
+     * Convert kuzzle document to marker object
      * @param document The Kuzzle document
      */
-    getMarker(document: KDocument<KMarker>): POI {
+    getMarker(document: KDocument<KMarkerDocument>): KMarker {
       return {
         _id: document._id,
         name: document._source.name,
@@ -267,9 +240,9 @@ export default Vue.extend({
       );
 
       // Add each message to our array
-      results.hits.map((hit) => {
-        this.markers = [this.getMarker(hit), ...this.markers];
-      });
+      for (const hit of results.hits) {
+        this.map.addMarker(this.getMarker(hit));
+      }
     },
     async subscribeMarkers() {
       // Call the subscribe method of the realtime controller and receive the roomId
@@ -283,29 +256,22 @@ export default Vue.extend({
           // Check if the notification interest us
           if (notification.type !== "document") return;
           const document = (notification as DocumentNotification)
-            .result as KDocument<KMarker>;
+            .result as KDocument<KMarkerDocument>;
 
           switch ((notification as DocumentNotification).action) {
             // Add the new marker to our array
             case "create":
-              this.markers = [this.getMarker(document), ...this.markers];
+              this.map.addMarker(this.getMarker(document));
               break;
 
             // Update marker in our array
             case "update":
-              this.markers = this.markers.map((marker) => {
-                if (marker._id === document._id) {
-                  return this.getMarker(document);
-                }
-                return marker;
-              });
+              this.map.updateMarker(document._id, this.getMarker(document));
               break;
 
             // Remove marker from or array
             case "delete":
-              this.markers = this.markers.filter(
-                (marker) => marker._id !== document._id
-              );
+              this.map.removeMarker(document._id);
               break;
           }
         }

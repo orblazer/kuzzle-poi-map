@@ -42,19 +42,18 @@ body,
   align-items: center;
   position: absolute;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.3);
   z-index: 1000;
-}
-
-.poi-tooltip h2 {
-  font-size: 1.2em;
-  margin: 0;
+  background-color: rgba(0, 0, 0, 0.3);
 }
 
 /**
  * Loader
  */
 .loader {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  background-color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
