@@ -100,6 +100,9 @@ export default Vue.extend<Data, Methods, Computed, Props>({
     (this.$refs.input as HTMLInputElement).focus();
   },
   methods: {
+    /**
+     * Submit form if the 'name' is valid
+     */
     submit() {
       if (this.name.trim().length > 0) {
         this.$emit("submit", { position: this.position, name: this.name });

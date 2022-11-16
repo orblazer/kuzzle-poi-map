@@ -26,6 +26,11 @@ export default Vue.extend({
     };
   },
   methods: {
+    /**
+     * Add notification
+     * @param type The notification type
+     * @param message The message
+     */
     notify(type: KNotification["type"], message: string) {
       const id = this.notifications.length + 1;
       this.notifications.push({
@@ -36,6 +41,10 @@ export default Vue.extend({
       });
     },
 
+    /**
+     * Dismiss an notification (delete it)
+     * @param id The notification ID
+     */
     dismiss(id: number) {
       this.notifications = this.notifications.filter(
         (notification) => notification.id !== id
