@@ -71,8 +71,6 @@ export default Vue.extend({
       await kuzzle.connect();
     } catch (_) {
       this.notifier.notify("error", "Could not connect to Kuzzle !");
-      kuzzle.addOnceListener("connected", () => this.loadData());
-
       return;
     }
 
@@ -180,11 +178,12 @@ export default Vue.extend({
       );
       kuzzle.addListener("connected", () => {
         this.notifier.notify("success", "Connected to Kuzzle !");
-        if (!this.loading) {
-          this.subscribeMarkers().catch(() =>
-            this.notifier.notify("error", "Could not subscribe to POIs !")
-          );
-        }
+
+        // Clear existing markers for prevent no longer exist markers
+        this.map.clearMarkers();
+
+        // Reload datas and re subscribe
+        this.loadData();
       });
 
       // Check if index exists
@@ -225,11 +224,11 @@ export default Vue.extend({
       const results = await kuzzle.document.search<KMarker>(
         this.kuzzle.index,
         this.kuzzle.collection,
-        { sort: ["_kuzzle_info.createdAt"] }, // Query => Sort the messages by creation date
-        { size: 100 } // Options => get a maximum of 100 messages
+        {}, // Query
+        { size: 100 } // Options => get a maximum of 100 markers
       );
 
-      // Add each message to our array
+      // Add each marker to our array
       for (const hit of results.hits) {
         this.map.addMarker(this.getMarker(hit));
       }

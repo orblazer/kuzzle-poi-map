@@ -64,6 +64,13 @@ export default Vue.extend({
     },
 
     /**
+     * Remove all markers
+     */
+    clearMarkers() {
+      this.markers = [];
+    },
+
+    /**
      * Add new marker to he map
      * @param marker The new marker
      */
