@@ -78,8 +78,10 @@ export default Vue.extend({
 
     await this.loadData();
   },
-  async beforeDestroy() {
-    await kuzzle.realtime.unsubscribe(this.kuzzle.roomID);
+  beforeDestroy() {
+    if (kuzzle.connected) {
+      kuzzle.disconnect();
+    }
   },
   methods: {
     /**
@@ -176,9 +178,14 @@ export default Vue.extend({
       kuzzle.addListener("disconnected", () =>
         this.notifier.notify("error", "Connection lost to Kuzzle !")
       );
-      kuzzle.addListener("connected", () =>
-        this.notifier.notify("success", "Connected to Kuzzle !")
-      );
+      kuzzle.addListener("connected", () => {
+        this.notifier.notify("success", "Connected to Kuzzle !");
+        if (!this.loading) {
+          this.subscribeMarkers().catch(() =>
+            this.notifier.notify("error", "Could not subscribe to POIs !")
+          );
+        }
+      });
 
       // Check if index exists
       if (!(await kuzzle.index.exists(this.kuzzle.index))) {
