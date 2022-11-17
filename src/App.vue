@@ -59,12 +59,10 @@ export default Vue.extend({
   },
   computed: {
     map() {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return this.$refs.map as any; // TODO: use "InstanceType<typeof KMap>"
+      return this.$refs.map as InstanceType<typeof KMap>;
     },
     notifier() {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return this.$refs.notifier as any; // TODO: use "InstanceType<typeof NotificationManager>"
+      return this.$refs.notifier as InstanceType<typeof NotificationManager>;
     },
   },
   async mounted() {
